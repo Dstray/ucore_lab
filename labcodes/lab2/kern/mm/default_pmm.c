@@ -180,7 +180,7 @@ default_free_pages(struct Page *base, size_t n) {
 		p->property = 0;
 		//ClearPageProperty(p);
 	}
-	if (front_p + front_p->property == base) { // 若被釋放的塊前面緊挨着一個空閒塊
+	if (front_p != NULL && front_p + front_p->property == base) { // 若被釋放的塊前面緊挨着一個空閒塊
 		front_p->property += base->property;
 		base->property = 0;
 		//ClearPageProperty(base);
