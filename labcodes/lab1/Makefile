@@ -208,12 +208,13 @@ TARGETS: $(TARGETS)
 
 .PHONY: qemu qemu-nox debug debug-nox
 qemu-mon: $(UCOREIMG)
-	$(V)$(QEMU) -monitor stdio -hda $< -serial null
+	$(V)$(QEMU)  -no-reboot -monitor stdio -hda $< -serial null
 qemu: $(UCOREIMG)
-	$(V)$(QEMU) -parallel stdio -hda $< -serial null
-
+	$(V)$(QEMU) -no-reboot -parallel stdio -hda $< -serial null
+log: $(UCOREIMG)
+	$(V)$(QEMU) -no-reboot -d int,cpu_reset  -D q.log -parallel stdio -hda $< -serial null
 qemu-nox: $(UCOREIMG)
-	$(V)$(QEMU) -serial mon:stdio -hda $< -nographic
+	$(V)$(QEMU)   -no-reboot -serial mon:stdio -hda $< -nographic
 TERMINAL        :=gnome-terminal
 debug: $(UCOREIMG)
 	# $(V)$(TERMINAL) -e "$(QEMU) -S -s -d in_asm -D $(BINDIR)/q.log -parallel stdio -hda $< -serial null"
