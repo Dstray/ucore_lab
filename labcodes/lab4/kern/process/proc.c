@@ -105,15 +105,15 @@ alloc_proc(void) {
     	proc->state = PROC_UNINIT;
     	proc->pid = -1;
     	proc->runs = 0;
-		proc->kstack = 0;
-		proc->need_resched = 0;
-		proc->parent = NULL;
-		proc->mm = NULL;
-		memset(&(proc->context), 0, sizeof(struct context));
-		proc->tf = NULL;
-		proc->cr3 = boot_cr3; // physical address of boot-time page directory
-		proc->flags = 0;
-		memset(proc->name, 0, PROC_NAME_LEN);
+    	proc->kstack = 0;
+    	proc->need_resched = 0;
+    	proc->parent = NULL;
+    	proc->mm = NULL;
+    	memset(&(proc->context), 0, sizeof(struct context));
+    	proc->tf = NULL;
+    	proc->cr3 = boot_cr3; // physical address of boot-time page directory
+    	proc->flags = 0;
+    	memset(proc->name, 0, PROC_NAME_LEN);
     }
     return proc;
 }
