@@ -257,11 +257,20 @@ class fs:
     def createLink(self, target, newfile, parent):
     # YOUR CODE, YOUR ID
         # find info about parent
+        pinode = self.inodes[self.nameToInum[parent]]
+	pdata = pinode.getAddr()
         # is there room in the parent directory?
+        if pdata.getFreeEntries() == 0 :
+            return -1
         # if the newfile was already in parent dir?
+        if pdata.dirEntryExists(newfile) :
+            return -1
         # now, find inumber of target
+        tinum = self.nameToInum[target]
         # inc parent ref count
+        pinode.incRefCnt()
         # now add to directory
+        pdata.addDirEntry(newfile, tinum)
     # DONE
         return tinum
 

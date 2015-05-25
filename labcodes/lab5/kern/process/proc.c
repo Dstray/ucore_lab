@@ -58,7 +58,7 @@ SYS_kill        : kill process                            -->do_kill-->proc->fla
 SYS_getpid      : get the process's pid
 
 */
-
+int seq = 0;
 // the process set's list
 list_entry_t proc_list;
 
@@ -208,7 +208,7 @@ get_pid(void) {
 // proc_run - make process "proc" running on cpu
 // NOTE: before call switch_to, should load  base addr of "proc"'s new PDT
 void
-proc_run(struct proc_struct *proc) {
+proc_run(struct proc_struct *proc) { cprintf(">>>>>> proc_run(%d) %d\n", current->pid, seq ++);
     if (proc != current) {
         bool intr_flag;
         struct proc_struct *prev = current, *next = proc;
@@ -378,7 +378,7 @@ copy_thread(struct proc_struct *proc, uintptr_t esp, struct trapframe *tf) {
  */
 int
 do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
-    int ret = -E_NO_FREE_PROC;
+    int ret = -E_NO_FREE_PROC; cprintf(">>>>>> do_fork(%d) %d\n", current->pid, seq ++);
     struct proc_struct *proc;
     if (nr_process >= MAX_PROCESS) {
         goto fork_out;
@@ -452,7 +452,7 @@ bad_fork_cleanup_proc:
 //   2. set process' state as PROC_ZOMBIE, then call wakeup_proc(parent) to ask parent reclaim itself.
 //   3. call scheduler to switch to other process
 int
-do_exit(int error_code) {
+do_exit(int error_code) { cprintf(">>>>>> do_exit(%d) %d\n", current->pid, seq ++);
     if (current == idleproc) {
         panic("idleproc exit.\n");
     }
@@ -617,7 +617,7 @@ load_icode(unsigned char *binary, size_t size) {
     assert(pgdir_alloc_page(mm->pgdir, USTACKTOP-3*PGSIZE , PTE_USER) != NULL);
     assert(pgdir_alloc_page(mm->pgdir, USTACKTOP-4*PGSIZE , PTE_USER) != NULL);
     
-    //(5) set current process's mm, sr3, and set CR3 reg = physical addr of Page Directory
+    //(5) set current process's mm, cr3, and set CR3 reg = physical addr of Page Directory
     mm_count_inc(mm);
     current->mm = mm;
     current->cr3 = PADDR(mm->pgdir);
@@ -682,7 +682,7 @@ do_execve(const char *name, size_t len, unsigned char *binary, size_t size) {
     int ret;
     if ((ret = load_icode(binary, size)) != 0) {
         goto execve_exit;
-    }
+    } cprintf(">>>>>> do_execv(%d) %d\n", current->pid, seq ++);
     set_proc_name(current, local_name);
     return 0;
 
@@ -702,7 +702,7 @@ do_yield(void) {
 //         - proc struct of this child.
 // NOTE: only after do_wait function, all resources of the child proces are free.
 int
-do_wait(int pid, int *code_store) {
+do_wait(int pid, int *code_store) { cprintf(">>>>>> do_wait(%d) %d\n", current->pid, seq ++);
     struct mm_struct *mm = current->mm;
     if (code_store != NULL) {
         if (!user_mem_check(mm, (uintptr_t)code_store, sizeof(int), 1)) {
@@ -781,7 +781,7 @@ do_kill(int pid) {
 // kernel_execve - do SYS_exec syscall to exec a user program called by user_main kernel_thread
 static int
 kernel_execve(const char *name, unsigned char *binary, size_t size) {
-    int ret, len = strlen(name);
+    int ret, len = strlen(name);cprintf(">>>>>> kernel_execve %d\n", seq ++);
     asm volatile (
         "int %1;"
         : "=a" (ret)
@@ -812,7 +812,7 @@ kernel_execve(const char *name, unsigned char *binary, size_t size) {
 
 // user_main - kernel thread used to exec a user program
 static int
-user_main(void *arg) {
+user_main(void *arg) { //cprintf(">>>>>> user_main(%d) %d\n", current->pid, seq ++);
 #ifdef TEST
     KERNEL_EXECVE2(TEST, TESTSTART, TESTSIZE);
 #else
@@ -830,7 +830,7 @@ init_main(void *arg) {
     int pid = kernel_thread(user_main, NULL, 0);
     if (pid <= 0) {
         panic("create user_main failed.\n");
-    }
+    }//cprintf(">>>>>> initmain %d\n", seq ++);
 
     while (do_wait(0, NULL) == 0) {
         schedule();
