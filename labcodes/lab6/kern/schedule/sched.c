@@ -14,23 +14,23 @@ static struct sched_class *sched_class;
 static struct run_queue *rq;
 
 static inline void
-sched_class_enqueue(struct proc_struct *proc) { cprintf(">>>>>> enqueue %d\n", current->pid);
+sched_class_enqueue(struct proc_struct *proc) { //cprintf(">>>>>> enqueue %d\n", current->pid);
     if (proc != idleproc) {
         sched_class->enqueue(rq, proc);
     }
 }
 
 static inline void
-sched_class_dequeue(struct proc_struct *proc) { cprintf(">>>>>> dequeue %d\n", current->pid);
+sched_class_dequeue(struct proc_struct *proc) { //cprintf(">>>>>> dequeue %d\n", current->pid);
     sched_class->dequeue(rq, proc);
 }
 
 static inline struct proc_struct *
-sched_class_pick_next(void) { cprintf(">>>>>> pick %d\n", current->pid);
+sched_class_pick_next(void) { //cprintf(">>>>>> pick %d\n", current->pid);
     return sched_class->pick_next(rq);
 }
 
-static void
+void //can't be static, called in trap.c
 sched_class_proc_tick(struct proc_struct *proc) {
     if (proc != idleproc) {
         sched_class->proc_tick(rq, proc);
