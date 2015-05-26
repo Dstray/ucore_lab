@@ -9,7 +9,7 @@
    usually split, and the remainder added to the list as another free block.
    Please see Page 196~198, Section 8.2 of Yan Wei Ming's chinese book "Data Structure -- C programming language"
 */
-// LAB2 EXERCISE 1: YOUR CODE
+// LAB2 EXERCISE 1: 2012011338
 // you should rewrite functions: default_init,default_init_memmap,default_alloc_pages, default_free_pages.
 /*
  * Details of FFMA
@@ -72,12 +72,14 @@ default_init_memmap(struct Page *base, size_t n) {
     for (; p != base + n; p ++) {
         assert(PageReserved(p));
         p->flags = p->property = 0;
+        SetPageProperty(p);
         set_page_ref(p, 0);
+        list_add_before(&free_list, &(p->page_link)); // 將page依次加入free_list的末尾
     }
     base->property = n;
-    SetPageProperty(base);
+    //SetPageProperty(base);
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    //list_add(&free_list, &(base->page_link));
 }
 
 static struct Page *
@@ -95,22 +97,37 @@ default_alloc_pages(size_t n) {
             break;
         }
     }
-    if (page != NULL) {
-        list_del(&(page->page_link));
+    if (page != NULL) { // 修改起始位置
+    	list_entry_t *le = &(page->page_link), *nle; // 索引指針
+    	int i;
+    	for (i = 0; i != n; i ++) { // 逐一設置被分配的頁，並將其page_link從free_list中刪除
+    		nle = list_next(le);
+    		struct Page* p = le2page(le, page_link);
+    		ClearPageProperty(p);
+    		SetPageReserved(p);
+    		list_del(le);
+    		le = nle;
+    	}
+    	struct Page* p = le2page(le, page_link);
+    	if (page->property > n) // 若分配的塊的大小大於請求
+    		p->property = page->property - n;
+    	//ClearPageProperty(page);
+    	//SetPageProperty(p);
+        /* list_del(&(page->page_link));
         if (page->property > n) {
             struct Page *p = page + n;
             p->property = page->property - n;
             list_add(&free_list, &(p->page_link));
-    }
+        }*/
         nr_free -= n;
-        ClearPageProperty(page);
+        //ClearPageProperty(page);
     }
     return page;
 }
 
 static void
 default_free_pages(struct Page *base, size_t n) {
-    assert(n > 0);
+    assert(n > 0);/*
     struct Page *p = base;
     for (; p != base + n; p ++) {
         assert(!PageReserved(p) && !PageProperty(p));
@@ -136,7 +153,37 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    list_add(&free_list, &(base->page_link));*/
+	list_entry_t *le = &free_list;
+	struct Page *front_p = NULL;
+	while ((le = list_next(le)) != &free_list) { // 順序找到free_list中第一個頁地址大於base的頁
+		struct Page *page = le2page(le, page_link);
+		if (page > base)
+			break;
+		if (page->property > 0) // 地址在base之前的第一個空塊的首頁爲front_p
+			front_p = page;
+	}
+	base->property = n;
+	struct Page *p = base;
+	for (; p != base + n; p ++) { // 將釋放的頁依次添加到le的前面，並設置相關參數
+		assert(PageReserved(p) && !PageProperty(p));
+		list_add_before(le, &(p->page_link));
+		ClearPageReserved(p);
+		SetPageProperty(p); //
+		set_page_ref(p, 0);
+	}
+	//SetPageProperty(base);
+	if (le2page(le, page_link) == p) { // 若恰好被釋放的塊緊接着空閒塊，則將兩塊合併
+		base->property += p->property;
+		p->property = 0;
+		//ClearPageProperty(p);
+	}
+	if (front_p != NULL && front_p + front_p->property == base) { // 若被釋放的塊前面緊挨着一個空閒塊
+		front_p->property += base->property;
+		base->property = 0;
+		//ClearPageProperty(base);
+	}
+	nr_free += n;
 }
 
 static size_t
