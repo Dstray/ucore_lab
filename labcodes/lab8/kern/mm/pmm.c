@@ -23,7 +23,7 @@
  *   - add enough information to the TSS in memory as needed
  *   - load the TR register with a segment selector for that segment
  *
- * There are several fileds in TSS for specifying the new stack pointer when a
+ * There are several fields in TSS for specifying the new stack pointer when a
  * privilege level change happens. But only the fields SS0 and ESP0 are useful
  * in our os kernel.
  *
@@ -34,7 +34,7 @@
  * */
 static struct taskstate ts = {0};
 
-// virtual address of physicall page array
+// virtual address of physical page array
 struct Page *pages;
 // amount of physical memory (in pages)
 size_t npage = 0;
@@ -363,7 +363,7 @@ pmm_init(void) {
 // return vaule: the kernel virtual address of this pte
 pte_t *
 get_pte(pde_t *pgdir, uintptr_t la, bool create) {
-    /* LAB2 EXERCISE 2: YOUR CODE
+    /* LAB2 EXERCISE 2: 2012011338
      *
      * If you need to visit a physical address, please use KADDR()
      * please read pmm.h for useful macros
@@ -396,6 +396,17 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     return NULL;          // (8) return page table entry
 #endif
+    pde_t *pde_p = &pgdir[PDX(la)];
+    if (!(*pde_p & PTE_P)) { // 若該頁目錄項對應頁表未被建立
+        struct Page *page; // 爲該該頁表分配一個頁的空間
+        if (!create || (page = alloc_page()) == NULL)
+            return NULL;
+        set_page_ref(page, 1);
+        uintptr_t pa = page2pa(page); // 新頁表的物理基址
+        memset(KADDR(pa), 0, PGSIZE); // 初始化
+        *pde_p = pa | PTE_U | PTE_W | PTE_P; // 重置頁目錄項
+    }
+    return &((pte_t *)KADDR(PDE_ADDR(*pde_p)))[PTX(la)];
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
@@ -416,7 +427,7 @@ get_page(pde_t *pgdir, uintptr_t la, pte_t **ptep_store) {
 //note: PT is changed, so the TLB need to be invalidate 
 static inline void
 page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
-    /* LAB2 EXERCISE 3: YOUR CODE
+    /* LAB2 EXERCISE 3: 2012011338
      *
      * Please check if ptep is valid, and tlb must be manually updated if mapping is updated
      *
@@ -441,6 +452,14 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    if (*ptep & PTE_P) { // 確定該頁表項是否被建立
+    	struct Page *page = pte2page(*ptep); // 獲取對應物理頁
+    	page_ref_dec(page);
+    	if (page_ref(page) == 0)
+    		free_page(page); // 釋放這一物理頁
+    	*ptep = 0; // 重置頁表項
+    	tlb_invalidate(pgdir, la); // 刷新TLB
+    }
 }
 
 void
@@ -508,7 +527,7 @@ copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
         assert(page!=NULL);
         assert(npage!=NULL);
         int ret=0;
-        /* LAB5:EXERCISE2 YOUR CODE
+        /* LAB5:EXERCISE2 2012011338
          * replicate content of page to npage, build the map of phy addr of nage with the linear addr start
          *
          * Some Useful MACROs and DEFINEs, you can use them in below implementation.
@@ -522,6 +541,11 @@ copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
          * (3) memory copy from src_kvaddr to dst_kvaddr, size is PGSIZE
          * (4) build the map of phy addr of  nage with the linear addr start
          */
+        void* src_kvaddr = page2kva(page);
+        void* dst_kvaddr = page2kva(npage);
+        memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
+        ret = page_insert(to, npage, start, perm);
+
         assert(ret == 0);
         }
         start += PGSIZE;
